@@ -171,6 +171,8 @@ function sectionHeading(title, symbol, theme = '', tag = '') {
 function renderLesson() {
   const position = currentIndex(lesson);
   const title = esc(lesson.title);
+  const { slot, alt } = lesson.art;
+  const artPosition = `--art-x:${(slot % 3) * 50}%;--art-y:${Math.floor(slot / 3) * 100}%`;
   document.title = `${lesson.title}｜英文文法積木`;
   main.innerHTML = `
     <div class="crumb"><span>課程地圖</span>${icon('chevron')}<span>${gradeNames[lesson.grade]}</span>${icon('chevron')}<span>第 ${position} 課</span></div>
@@ -182,7 +184,7 @@ function renderLesson() {
         <p class="summary">${esc(lesson.summary)}</p>
         <button type="button" class="button" data-jump="practice">${icon('flag')} 開始闖關 ${icon('arrow')}</button>
       </div>
-      <div class="hero-art"><img src="assets/juju.jpg" width="1536" height="1024" alt="橘貓嚮導橘橘捧著書，身旁放著彩色積木"></div>
+      <div class="hero-art grade-${lesson.grade + 7}" style="${artPosition}" role="img" aria-label="${esc(alt)}"></div>
     </header>
     <nav class="jump" aria-label="本課段落">
       <a href="#warmup" data-jump="warmup">${icon('chat')} 情境暖身</a>
@@ -203,7 +205,7 @@ function renderLesson() {
         ${lesson.shapes.map((form, index) => `<button type="button" data-mode="${index}" aria-pressed="${index === 0}">${esc(form.label)}</button>`).join('')}
       </div>
       <div class="formula-display" id="formula-display"></div>
-      <div class="coach"><img class="cat-face" src="assets/juju.jpg" alt="" width="38" height="38"><p><b>橘橘提示</b>${esc(lesson.tip)}</p></div>
+      <div class="coach"><span class="cat-face" aria-hidden="true"></span><p><b>橘橘提示</b>${esc(lesson.tip)}</p></div>
     </section>
     <section class="panel" id="traps" tabindex="-1">
       ${sectionHeading('易錯地雷區', 'warning', 'amber')}
@@ -306,7 +308,7 @@ function renderQuiz() {
   if (finished) {
     const next = lessons[lessons.indexOf(lesson) + 1];
     container.innerHTML = `<div class="finish">
-      <span class="star">${icon('star')}</span><h3 id="quiz-title" tabindex="-1">三關全過！</h3>
+      <span class="cat-face" data-pose="finish" aria-hidden="true"></span><h3 id="quiz-title" tabindex="-1">三關全過！</h3>
       <p>橘橘說：「你會看線索，也會把這個句型用在生活裡了！」</p>
       ${stillFlowers}
       <div class="quiz-controls"><button type="button" class="button secondary" data-action="again">${icon('reset')} 再玩一次</button>
@@ -335,7 +337,7 @@ function renderQuiz() {
     </div><div class="tiles" role="group" aria-label="可選的句型積木">${tiles}</div>
     ${!done ? `<div class="quiz-controls"><button type="button" class="button" data-action="check-order" ${ordered.length !== task.answer.length ? 'disabled' : ''}>檢查句型</button><button type="button" class="button secondary" data-action="reset-order" ${ordered.length ? '' : 'disabled'}>${icon('reset')} 重排</button></div>` : ''}`}
     <div id="feedback" class="feedback ${done ? 'good' : ''}" role="status" tabindex="-1">${status ? `
-      <div class="feedback-copy"><img class="cat-face" src="assets/juju.jpg" alt="" width="38" height="38"><p><b>${done ? '✓ 答對了！' : '再試一次！'}</b> ${esc(done ? task.reason : task.hint)}</p></div>
+      <div class="feedback-copy"><span class="cat-face" data-pose="${done ? 'correct' : 'retry'}" aria-hidden="true"></span><p><b>${done ? '✓ 答對了！' : '再試一次！'}</b> ${esc(done ? task.reason : task.hint)}</p></div>
       ${done ? `${stillFlowers}<button type="button" class="button next" data-action="next">${step === steps.length - 1 ? '完成闖關' : '下一關'} ${icon('arrow')}</button>` : ''}` : ''}</div>`;
 }
 
