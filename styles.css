@@ -174,6 +174,30 @@ h1 { color: #213b32; font-size: clamp(2.02rem, calc(1.65rem + 1.2vw), 3.24rem); 
 .finish .star { color: #8a5209; font-size: 1.6rem; }
 .finish p { margin: .34rem 0 .7rem; font-size: .88rem; }
 .finish .quiz-controls { justify-content: center; }
+.confetti-layer { position: fixed; inset: 0; z-index: 8; overflow: hidden; pointer-events: none; }
+.confetti-particle {
+  position: absolute;
+  top: -2rem;
+  left: var(--x);
+  width: var(--size);
+  height: calc(var(--size) * 1.45);
+  background: var(--color);
+  border-radius: 2px;
+  animation: confetti-fall var(--duration) linear var(--delay) both;
+}
+.confetti-particle.petal { border-radius: 75% 30% 75% 30%; }
+.confetti-particle.flower { width: auto; height: auto; background: none; font-size: calc(var(--size) * 1.7); line-height: 1; }
+@keyframes confetti-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0); }
+  38% { transform: translate3d(calc(var(--drift) * -.25), 41vh, 0) rotate(calc(var(--spin) * .4)); }
+  86% { opacity: 1; }
+  100% { transform: translate3d(var(--drift), calc(100vh + 4rem), 0) rotate(var(--spin)); opacity: 0; }
+}
+.still-flowers { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .confetti-layer { display: none; }
+  .still-flowers { display: block; margin-top: .34rem; }
+}
 .footer { color: var(--muted); font-size: .74rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .45rem; padding: .28rem .22rem; }
 dialog { width: min(90vw, 27rem); border: 1px solid var(--line); border-radius: 1.1rem; padding: 1.2rem; color: var(--ink); background: white; box-shadow: 0 18px 70px #112e2e33; }
 dialog::backdrop { background: #1d322e66; }

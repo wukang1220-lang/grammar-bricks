@@ -5,6 +5,7 @@ const main = $('#main');
 const sizeSelect = $('#size');
 const rateSelect = $('#rate');
 const progressDialog = $('#progress-dialog');
+const confettiLayer = $('#confetti-layer');
 const player = $('#speech-player');
 const audioStatus = $('#audio-status');
 const stateKey = 'grammar-bricks-v1';
@@ -14,6 +15,7 @@ const steps = ['找線索', '拼句型', '用在生活'];
 const voices = window.speechSynthesis;
 let playback = null;
 let audioNotice;
+let confettiCleanup;
 let lesson;
 let mode = 0;
 let quiz;
@@ -267,6 +269,37 @@ function quizPrompt(text) {
   return esc(text).replace(/[A-Za-z_][A-Za-z0-9_ .!?&;#,’'/-]*/g, (match) => `<span lang="en">${match}</span>`);
 }
 
+function celebrate(completed = false) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const colors = ['#ff537a', '#ff9d24', '#f7cc18', '#21ba8b', '#3d9fff', '#9a65ed'];
+  const particles = document.createDocumentFragment();
+  const count = completed ? 240 : 160;
+  for (let index = 0; index < count; index++) {
+    const particle = document.createElement('span');
+    particle.className = 'confetti-particle';
+    if (index % 5 === 0) {
+      particle.classList.add('flower');
+      particle.textContent = '🌸';
+    } else if (index % 3 === 0) {
+      particle.classList.add('petal');
+    }
+    particle.style.setProperty('--x', `${Math.random() * 100}%`);
+    particle.style.setProperty('--size', `${6 + Math.random() * 9}px`);
+    particle.style.setProperty('--color', colors[index % colors.length]);
+    particle.style.setProperty('--drift', `${Math.random() * 150 - 75}px`);
+    particle.style.setProperty('--spin', `${Math.random() * 1440 - 720}deg`);
+    particle.style.setProperty('--delay', `${Math.random() * 310}ms`);
+    particle.style.setProperty('--duration', `${(completed ? 1750 : 1350) + Math.random() * 1000}ms`);
+    particles.append(particle);
+  }
+  confettiLayer.replaceChildren(particles);
+  clearTimeout(confettiCleanup);
+  confettiCleanup = setTimeout(() => confettiLayer.replaceChildren(), 3200);
+}
+
+const stillFlowers = '<span class="still-flowers" aria-hidden="true">🌸 🌼 🌸 🌼 🌸</span>';
+
 function renderQuiz() {
   const container = $('#quiz');
   const { step, selected, ordered, pieces, status, finished } = quiz;
@@ -275,6 +308,7 @@ function renderQuiz() {
     container.innerHTML = `<div class="finish">
       <span class="star">${icon('star')}</span><h3 id="quiz-title" tabindex="-1">三關全過！</h3>
       <p>橘橘說：「你會看線索，也會把這個句型用在生活裡了！」</p>
+      ${stillFlowers}
       <div class="quiz-controls"><button type="button" class="button secondary" data-action="again">${icon('reset')} 再玩一次</button>
       ${next ? `<a class="button" href="#${next.id}">下一課 ${icon('arrow')}</a>` : '<button type="button" class="button" data-action="progress">查看學習進度</button>'}</div>
     </div>`;
@@ -302,13 +336,19 @@ function renderQuiz() {
     ${!done ? `<div class="quiz-controls"><button type="button" class="button" data-action="check-order" ${ordered.length !== task.answer.length ? 'disabled' : ''}>檢查句型</button><button type="button" class="button secondary" data-action="reset-order" ${ordered.length ? '' : 'disabled'}>${icon('reset')} 重排</button></div>` : ''}`}
     <div id="feedback" class="feedback ${done ? 'good' : ''}" role="status" tabindex="-1">${status ? `
       <div class="feedback-copy"><img class="cat-face" src="assets/juju.jpg" alt="" width="38" height="38"><p><b>${done ? '✓ 答對了！' : '再試一次！'}</b> ${esc(done ? task.reason : task.hint)}</p></div>
-      ${done ? `<button type="button" class="button next" data-action="next">${step === steps.length - 1 ? '完成闖關' : '下一關'} ${icon('arrow')}</button>` : ''}` : ''}</div>`;
+      ${done ? `${stillFlowers}<button type="button" class="button next" data-action="next">${step === steps.length - 1 ? '完成闖關' : '下一關'} ${icon('arrow')}</button>` : ''}` : ''}</div>`;
 }
 
 function updateQuiz(focusSelector) {
   stopAudio();
   renderQuiz();
   (focusSelector && $(focusSelector) || $('#quiz-title')).focus({ preventScroll: true });
+}
+
+function checkAnswer(correct) {
+  quiz.status = correct ? 'correct' : 'incorrect';
+  updateQuiz('#feedback');
+  if (correct) celebrate();
 }
 
 function jumpTo(id) {
@@ -350,8 +390,7 @@ function handleAction(action) {
     case 'progress': showProgress(); break;
     case 'check-order': {
       const answer = lesson.tasks[quiz.step].answer;
-      quiz.status = quiz.ordered.length === answer.length && quiz.ordered.every((value, index) => value === index) ? 'correct' : 'incorrect';
-      updateQuiz('#feedback');
+      checkAnswer(quiz.ordered.length === answer.length && quiz.ordered.every((value, index) => value === index));
       break;
     }
     case 'reset-order': quiz.ordered = []; quiz.status = ''; updateQuiz('[data-add]:enabled'); break;
@@ -370,6 +409,7 @@ function handleAction(action) {
       }
       updateQuiz('#quiz-title');
       $('#quiz-title').scrollIntoView({ block: 'nearest' });
+      if (quiz.finished) celebrate(true);
       break;
     }
   }
@@ -399,8 +439,7 @@ document.addEventListener('click', (event) => {
   if (data.choice !== undefined) {
     const task = lesson.tasks[quiz.step];
     quiz.selected = Number(data.choice);
-    quiz.status = task.choices[quiz.selected] === task.answer ? 'correct' : 'incorrect';
-    updateQuiz('#feedback');
+    checkAnswer(task.choices[quiz.selected] === task.answer);
     return;
   }
   if (data.add !== undefined) {
