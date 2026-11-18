@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f7f1">
+  <meta name="description" content="和橘橘一起拆解國中英文句型、聽例句、拼積木和練習闖關。">
+  <title>英文文法積木</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="lessons.js"></script>
+  <script defer src="audio.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main" data-jump="main">跳到課程內容</a>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-brick" viewBox="0 0 24 24"><path d="M4 10h16a2 2 0 0 1 2 2v7H2v-7a2 2 0 0 1 2-2Z M6 10V6h4v4m4 0V6h4v4"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 4a4 4 0 0 1 0 6m3-9a8 8 0 0 1 0 12"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6v14M3 5c4-1 7 0 9 2 2-2 5-3 9-2v13c-4-1-7 0-9 2-2-2-5-3-9-2V5Z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 22V3m0 1c5-5 9 5 15 0v11c-6 5-10-5-15 0"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.8a2 2 0 0 1 3.4 0l8 13A2 2 0 0 1 20 21H4a2 2 0 0 1-1.7-3.2l8-13ZM12 9v4m0 4h.01"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l1.5-4.3A8.5 8.5 0 1 1 21 11.5ZM8 11.5h.01m4 0h.01m4 0h.01"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5 15 9l7 .8-5.1 4.8 1.4 6.9-6.3-3.4-6.3 3.4 1.4-6.9L2 9.8 9 9l3-6.5Z"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.2 7m-2.2-7V4m0 7h7"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+  </svg>
+  <header class="topbar">
+    <div class="top-inner">
+      <a class="brand" href="#be" aria-label="英文文法積木首頁">
+        <span class="brand-mark"><svg class="icon"><use href="#i-brick"/></svg></span>
+        <span>英文文法積木<small lang="en">GRAMMAR BRICKS</small></span>
+      </a>
+      <div class="tools">
+        <label class="setting" for="rate"><svg class="icon"><use href="#i-volume"/></svg><span>語速</span>
+          <select id="rate" aria-label="英文發音語速">
+            <option value="0.6">0.6×</option><option value="0.8">0.8×</option>
+            <option value="1" selected>1.0×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option>
+          </select>
+        </label>
+        <label class="setting" for="size"><span class="aa" aria-hidden="true">Aa</span><span>字級</span>
+          <select id="size" aria-label="全站字級"><option value="small">小</option><option value="large" selected>大</option><option value="xlarge">特大</option></select>
+        </label>
+        <button class="header-progress" type="button" data-action="progress"><svg class="icon"><use href="#i-star"/></svg><span>學習進度</span></button>
+      </div>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="課程地圖">
+      <div class="side-card">
+        <div class="side-heading"><svg class="icon"><use href="#i-grid"/></svg><h2>課程地圖</h2></div>
+        <div class="grade-pills" id="grades" role="group" aria-label="選擇年級"></div>
+        <p id="grade-label" class="grade-label"></p>
+        <nav id="lesson-nav" aria-label="文法課程"></nav>
+        <div class="side-progress">
+          <div><span>本年級進度</span><b id="side-count"></b></div>
+          <progress id="side-bar" aria-label="本年級課程完成數"></progress>
+        </div>
+      </div>
+      <div class="side-tip"><img src="assets/juju.jpg" alt="" width="42" height="42"><p><strong>橘橘的小提醒</strong><br>看到喇叭就能聽發音，語速可以隨時調整喔！</p></div>
+    </aside>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <audio id="speech-player" preload="none" hidden></audio>
+  <p id="audio-status" class="audio-status" role="status" hidden></p>
+  <dialog id="progress-dialog" aria-labelledby="progress-title">
+    <form method="dialog"><button class="icon-button dialog-close" aria-label="關閉學習進度"><svg class="icon"><use href="#i-close"/></svg></button></form>
+    <h2 id="progress-title">我的學習進度</h2>
+    <div id="progress-content"></div>
+  </dialog>
+  <noscript><p class="noscript">請允許 JavaScript，才能使用文法積木、發音和闖關練習。</p></noscript>
+</body>
+</html>
