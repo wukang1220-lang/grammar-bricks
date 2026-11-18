@@ -93,16 +93,9 @@ h1 { color: #213b32; font-size: clamp(2.02rem, calc(1.65rem + 1.2vw), 3.24rem); 
 .hero-art {
   justify-self: center;
   width: min(100%, 21rem, 420px);
-  aspect-ratio: 1;
-  background-position: var(--art-x) var(--art-y);
-  background-size: 300% 200%;
-  background-repeat: no-repeat;
   mask-image: radial-gradient(ellipse 63% 62% at center, black 66%, transparent 100%);
   mix-blend-mode: darken;
 }
-.hero-art.grade-7 { background-image: url("assets/juju-grade7.jpg"); }
-.hero-art.grade-8 { background-image: url("assets/juju-grade8.jpg"); }
-.hero-art.grade-9 { background-image: url("assets/juju-grade9.jpg"); }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; border: 1px solid transparent; min-height: 2.51rem; padding: .45rem .89rem; border-radius: .62rem; background: var(--green); color: white; font-size: .88rem; font-weight: 850; text-decoration: none; }
 .button:hover { background: var(--green-dark); }
 .button.secondary { border-color: #d9e6db; background: white; color: var(--green-dark); }
@@ -162,11 +155,6 @@ h1 { color: #213b32; font-size: clamp(2.02rem, calc(1.65rem + 1.2vw), 3.24rem); 
 .trap-line small { display: block; font-size: .68rem; font-weight: 850; }
 .trap-line .example { font-size: .92rem; }
 .practice { border-color: #d3e6d8; }
-.quest-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; margin-bottom: .88rem; }
-.quest-track span { display: flex; gap: .3rem; align-items: center; color: #54665d; background: #f1f3ee; padding: .38rem .48rem; border-radius: .5rem; font-size: .75rem; font-weight: 750; }
-.quest-track b { margin-right: .18rem; }
-.quest-track [aria-current] { color: var(--green-dark); background: #dceee1; }
-.quest-track .passed { background: #edf6ed; color: var(--green); }
 .quiz-text { display: flex; align-items: center; gap: .43rem; justify-content: space-between; margin-bottom: .6rem; font-size: 1.07rem; }
 .quiz-text h3 { min-width: 0; overflow-wrap: anywhere; }
 .quiz-text [lang="en"] { font-weight: 800; display: inline-block; }

@@ -11,12 +11,13 @@ const audioStatus = $('#audio-status');
 const stateKey = 'grammar-bricks-v1';
 const defaultState = { rate: '1', size: 'large', completed: [] };
 const settings = readSettings();
-const steps = ['找線索', '拼句型', '用在生活'];
 const voices = window.speechSynthesis;
+const clipLibrary = { ...speechClips, ...practiceClips };
 let playback = null;
 let audioNotice;
 let confettiCleanup;
-let lesson;
+let lesson = lessons[0];
+let route;
 let mode = 0;
 let quiz;
 
@@ -26,10 +27,11 @@ function readSettings() {
     return {
       rate: ['0.6', '0.8', '1', '1.2', '1.4'].includes(saved.rate) ? saved.rate : defaultState.rate,
       size: ['small', 'large', 'xlarge'].includes(saved.size) ? saved.size : defaultState.size,
-      completed: Array.isArray(saved.completed) ? saved.completed.filter((id) => lessons.some((item) => item.id === id)) : []
+      completed: Array.isArray(saved.completed) ? saved.completed.filter((id) => lessons.some((item) => item.id === id)) : [],
+      ...readStudyRecords(saved)
     };
   } catch {
-    return { ...defaultState, completed: [] };
+    return { ...defaultState, completed: [], ...readStudyRecords({}) };
   }
 }
 
@@ -46,8 +48,8 @@ function icon(name) {
 }
 
 function englishOnly(text) {
-  return (text.match(/[A-Za-z_][A-Za-z0-9’' ,.!?_:;()/-]*/g) || []).join(' ')
-    .replaceAll('___', 'blank').trim();
+  const plain = text.replace(/\[\d+\]|_{3,}/g, ' blank ').replace(/\$(\d+)/g, '$1 dollars');
+  return (plain.match(/[A-Za-z0-9_][A-Za-z0-9’' ,.!?_:;()/-]*/g) || []).join(' ').replace(/ +/g, ' ').trim();
 }
 
 function speakButton(text, label = '聽英文', sequence = null) {
@@ -102,9 +104,9 @@ function speak(button) {
   stopAudio();
   if (sameButton) return;
   audioStatus.hidden = true;
-  const recorded = Object.hasOwn(speechClips, button.dataset.say) ? speechClips[button.dataset.say] : null;
+  const recorded = Object.hasOwn(clipLibrary, button.dataset.say) ? clipLibrary[button.dataset.say] : null;
   const pieces = button.dataset.audioPieces ? JSON.parse(button.dataset.audioPieces) : [];
-  const clips = recorded ? [recorded] : pieces.map((piece) => speechClips[piece]);
+  const clips = recorded ? [recorded] : pieces.map((piece) => Object.hasOwn(clipLibrary, piece) ? clipLibrary[piece] : null);
   if (!clips.length || clips.some((clip) => !clip)) {
     speakWithBrowser(button);
     return;
@@ -151,7 +153,7 @@ function renderSidebar() {
   $('#grades').innerHTML = gradeNames.map((name, index) => `<button type="button" data-grade="${index}" aria-pressed="${index === lesson.grade}">${name}</button>`).join('');
   $('#grade-label').textContent = `${gradeGoals[lesson.grade]} · ${units.length} 堂課`;
   $('#lesson-nav').innerHTML = units.map((item, index) => `
-    <a href="#${item.id}" class="lesson-link" ${item === lesson ? 'aria-current="page"' : ''} ${isDone(item) ? `aria-label="${esc(item.title)}，已通關"` : ''}>
+    <a href="#${item.id}" class="lesson-link" ${route === item.id ? 'aria-current="page"' : ''} ${isDone(item) ? `aria-label="${esc(item.title)}，已通關"` : ''}>
       <span class="number" aria-hidden="true">${twoDigits(index + 1)}</span><span>${esc(item.title)}</span>
       ${isDone(item) ? icon('check') : icon('chevron')}
     </a>`).join('');
@@ -161,7 +163,7 @@ function renderSidebar() {
   progress.value = completed;
   const nav = $('#lesson-nav');
   const current = nav.querySelector('[aria-current]');
-  if (nav.scrollWidth > nav.clientWidth) nav.scrollLeft = current.offsetLeft - nav.firstElementChild.offsetLeft;
+  if (current && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = current.offsetLeft - nav.firstElementChild.offsetLeft;
 }
 
 function sectionHeading(title, symbol, theme = '', tag = '') {
@@ -171,8 +173,6 @@ function sectionHeading(title, symbol, theme = '', tag = '') {
 function renderLesson() {
   const position = currentIndex(lesson);
   const title = esc(lesson.title);
-  const { slot, alt } = lesson.art;
-  const artPosition = `--art-x:${(slot % 3) * 50}%;--art-y:${Math.floor(slot / 3) * 100}%`;
   document.title = `${lesson.title}｜英文文法積木`;
   main.innerHTML = `
     <div class="crumb"><span>課程地圖</span>${icon('chevron')}<span>${gradeNames[lesson.grade]}</span>${icon('chevron')}<span>第 ${position} 課</span></div>
@@ -184,7 +184,7 @@ function renderLesson() {
         <p class="summary">${esc(lesson.summary)}</p>
         <button type="button" class="button" data-jump="practice">${icon('flag')} 開始闖關 ${icon('arrow')}</button>
       </div>
-      <div class="hero-art grade-${lesson.grade + 7}" style="${artPosition}" role="img" aria-label="${esc(alt)}"></div>
+      ${artMarkup(lesson, 'hero-art')}
     </header>
     <nav class="jump" aria-label="本課段落">
       <a href="#warmup" data-jump="warmup">${icon('chat')} 情境暖身</a>
@@ -210,7 +210,8 @@ function renderLesson() {
     <section class="panel" id="traps" tabindex="-1">
       ${sectionHeading('易錯地雷區', 'warning', 'amber')}
       <div class="trap-list">
-        ${lesson.traps.map(({ wrong, right, note }) => `<article class="trap">
+        ${lesson.traps.map(({ form, wrong, right, note }) => `<article class="trap">
+          <h3 class="trap-form">${form}</h3>
           <div class="trap-pair">
             <div class="trap-line wrong"><div><small>✕ 錯誤</small><span class="example" lang="en">${esc(wrong)}</span></div>${speakButton(wrong, '聽錯誤例句')}</div>
             <div class="trap-line"><div><small>✓ 正確</small><span class="example" lang="en">${esc(right)}</span></div>${speakButton(right, '聽正確例句')}</div>
@@ -218,10 +219,7 @@ function renderLesson() {
         </article>`).join('')}
       </div>
     </section>
-    <section class="panel practice" id="practice" tabindex="-1">
-      ${sectionHeading('闖關練習', 'flag', '', '3 關')}
-      <div id="quiz"></div>
-    </section>
+    ${practicePanel('闖關練習', `題庫 ${lesson.pool.length} 題 · 每回 10 題`)}
     <footer class="footer"><span>英文文法積木</span><span>依文法主題編排 · 各版本授課順序可能不同</span></footer>`;
   renderFormula(false);
   renderQuiz();
@@ -262,9 +260,15 @@ function scramble(length) {
   return order;
 }
 
-function resetQuiz(step = 0) {
-  const task = lesson.tasks[step];
-  quiz = { step, selected: null, ordered: [], pieces: task?.type === 'build' ? scramble(task.answer.length) : [], status: '', finished: false };
+function startQuiz(kind, tasks, unit = null) {
+  const prepared = tasks.map((task) => task.type === 'pick' ? { ...task, choices: shuffled(task.choices) } : task);
+  quiz = { kind, unit, day: studyDate(), tasks: prepared, answers: [], index: 0, initialStars: sumStars(settings), finished: false };
+  resetQuestion();
+}
+
+function resetQuestion() {
+  const task = quiz.tasks[quiz.index];
+  Object.assign(quiz, { selected: null, ordered: [], pieces: task?.type === 'build' ? scramble(task.answer.length) : [], status: '' });
 }
 
 function quizPrompt(text) {
@@ -304,19 +308,28 @@ const stillFlowers = '<span class="still-flowers" aria-hidden="true">🌸 🌼 �
 
 function renderQuiz() {
   const container = $('#quiz');
-  const { step, selected, ordered, pieces, status, finished } = quiz;
+  const { index, tasks, selected, ordered, pieces, status, finished, kind, unit } = quiz;
   if (finished) {
-    const next = lessons[lessons.indexOf(lesson) + 1];
+    const score = quiz.answers.filter(Boolean).length;
+    const ranked = kind === 'lesson' || kind === 'exam';
+    const totalStars = sumStars(settings);
+    const unlocked = catCollection.filter(([, need]) => quiz.initialStars < need && need <= totalStars).map(([, , name]) => name);
+    const next = kind === 'lesson' && lessons[lessons.indexOf(unit) + 1];
+    const details = ranked ? `本回星等 ${starsMarkup(studyStars(score))} · 最佳 ${settings.best[unit.id]} / ${roundLength} 題`
+      : kind === 'review' ? `本回訂正 ${quiz.answers.filter((right, slot) => right && settings.mistakes[tasks[slot].id]?.clearedAt).length} 題`
+      : '今日加練已完成';
     container.innerHTML = `<div class="finish">
-      <span class="cat-face" data-pose="finish" aria-hidden="true"></span><h3 id="quiz-title" tabindex="-1">三關全過！</h3>
-      <p>橘橘說：「你會看線索，也會把這個句型用在生活裡了！」</p>
+      <span class="cat-face" data-pose="finish" aria-hidden="true"></span><h3 id="quiz-title" tabindex="-1">這回練習完成！</h3>
+      <p><strong>首次答對 ${score} / ${tasks.length} 題</strong></p><p>${details}</p>
+      ${unlocked.length ? `<p class="unlocks">新解鎖 ${unlocked.join('、')} · <a href="#collection">看圖鑑</a></p>` : ''}
       ${stillFlowers}
-      <div class="quiz-controls"><button type="button" class="button secondary" data-action="again">${icon('reset')} 再玩一次</button>
-      ${next ? `<a class="button" href="#${next.id}">下一課 ${icon('arrow')}</a>` : '<button type="button" class="button" data-action="progress">查看學習進度</button>'}</div>
+      <div class="quiz-controls">${ranked ? `<button type="button" class="button secondary" data-action="again">${icon('reset')} 再抽 10 題</button>` : ''}
+      ${next ? `<a class="button" href="#${next.id}">下一課 ${icon('arrow')}</a>` : `<a class="button secondary" href="#${kind === 'daily' ? 'review' : 'today'}">${kind === 'daily' ? '錯題本' : '今日任務'}</a>`}
+      ${ranked ? '<a class="button secondary" href="#review">查看錯題</a>' : ''}</div>
     </div>`;
     return;
   }
-  const task = lesson.tasks[step];
+  const task = tasks[index];
   const done = status === 'correct';
   const label = task.type === 'build' ? '點選積木來拼句，點上方積木可撤回。' : '點選答案，看看橘橘怎麼解釋。';
   const choices = task.type === 'pick' && task.choices.map((choice, index) => {
@@ -327,8 +340,12 @@ function renderQuiz() {
     const word = esc(task.answer[index]);
     return `<span class="tile-wrap"><button type="button" class="tile" data-add="${index}" ${ordered.includes(index) || done ? 'disabled' : ''}><span lang="en">${word}</span></button>${speakButton(task.answer[index], '聽積木')}</span>`;
   }).join('');
+  const context = task.context ? `<details class="reading-context" open><summary>${esc(task.context.title)}</summary><div class="utterance"><p lang="en">${esc(task.context.text)}</p>${speakButton(task.context.text, '聽閱讀素材')}</div></details>` : '';
+  const answer = task.type === 'build' ? task.answer.join(' ') : task.answer;
   container.innerHTML = `
-    <div class="quest-track" aria-label="闖關進度">${steps.map((name, index) => `<span ${index === step ? 'aria-current="step"' : ''} class="${index < step || (index === step && done) ? 'passed' : ''}"><b>${index < step || (index === step && done) ? '✓' : index + 1}</b>${name}</span>`).join('')}</div>
+    <div class="round-progress"><strong>第 ${index + 1} / ${tasks.length} 題</strong><progress aria-label="作答進度" max="${tasks.length}" value="${quiz.answers.length}"></progress>${unit && settings.best[unit.id] !== undefined ? `<span>最佳 ${starsMarkup(studyStars(settings.best[unit.id]))}</span>` : ''}</div>
+    ${kind === 'review' || kind === 'daily' ? `<p class="question-source">${esc(studySources.get(task.source).title)}</p>` : ''}
+    ${context}
     <div class="quiz-text"><h3 id="quiz-title" tabindex="-1">${quizPrompt(task.prompt)}</h3>${speakButton(task.prompt, '聽題目英文')}</div>
     <p class="translation" style="margin-bottom: .55rem">${label}</p>
     ${choices ? `<div class="choices">${choices}</div>` : `
@@ -338,7 +355,8 @@ function renderQuiz() {
     ${!done ? `<div class="quiz-controls"><button type="button" class="button" data-action="check-order" ${ordered.length !== task.answer.length ? 'disabled' : ''}>檢查句型</button><button type="button" class="button secondary" data-action="reset-order" ${ordered.length ? '' : 'disabled'}>${icon('reset')} 重排</button></div>` : ''}`}
     <div id="feedback" class="feedback ${done ? 'good' : ''}" role="status" tabindex="-1">${status ? `
       <div class="feedback-copy"><span class="cat-face" data-pose="${done ? 'correct' : 'retry'}" aria-hidden="true"></span><p><b>${done ? '✓ 答對了！' : '再試一次！'}</b> ${esc(done ? task.reason : task.hint)}</p></div>
-      ${done ? `${stillFlowers}<button type="button" class="button next" data-action="next">${step === steps.length - 1 ? '完成闖關' : '下一關'} ${icon('arrow')}</button>` : ''}` : ''}</div>`;
+      ${done ? stillFlowers : `<details class="answer-key"><summary>看正解</summary><div class="utterance"><strong lang="en">${esc(answer)}</strong>${speakButton(answer,'聽正解')}</div><p>${esc(task.reason)}</p></details>`}` : ''}</div>
+    ${quiz.answers.length > index ? `<div class="quiz-controls"><button type="button" class="button" data-action="next">${index === tasks.length - 1 ? '完成這回' : '下一題'} ${icon('arrow')}</button></div>` : ''}`;
 }
 
 function updateQuiz(focusSelector) {
@@ -348,8 +366,24 @@ function updateQuiz(focusSelector) {
 }
 
 function checkAnswer(correct) {
+  const task = quiz.tasks[quiz.index];
+  if (quiz.answers.length === quiz.index) {
+    quiz.answers.push(correct);
+    const dayKey = quiz.kind === 'daily' ? quiz.day : studyDate();
+    const day = settings.daily[dayKey] ||= emptyDay();
+    const previous = settings.mistakes[task.id];
+    if (correct) {
+      if (!day.right.includes(task.id)) day.right.push(task.id);
+      if (previous && !previous.clearedAt && (quiz.kind === 'review' || quiz.kind === 'daily')) previous.clearedAt = Date.now();
+    } else {
+      settings.mistakes[task.id] = { count: (previous?.count || 0) + 1, lastAt: Date.now(), clearedAt: null };
+    }
+    saveSettings();
+    renderStudyNavigation();
+  }
   quiz.status = correct ? 'correct' : 'incorrect';
   updateQuiz('#feedback');
+  $('#feedback').scrollIntoView({ block: 'nearest' });
   if (correct) celebrate();
 }
 
@@ -360,54 +394,111 @@ function jumpTo(id) {
 }
 
 function showProgress() {
-  $('#progress-content').innerHTML = gradeNames.map((name, index) => {
+  $('#progress-content').innerHTML = `<p class="mission-summary"><strong>累積 ${sumStars(settings)} 星</strong><a href="#collection" data-action="close-progress">橘橘圖鑑</a></p>` + gradeNames.map((name, index) => {
     const units = byGrade(index);
     const done = units.filter(isDone);
     return `<div class="progress-row"><div><strong>${name}</strong><b>${done.length} / ${units.length} 堂</b></div><progress aria-label="${name}完成進度" max="${units.length}" value="${done.length}"></progress><p>${done.length ? `已通關：${done.map((item) => esc(item.title)).join('、')}` : '還沒有通關紀錄'}</p></div>`;
-  }).join('') + '<p class="local-note">完成一課的三關後，進度會儲存在這個瀏覽器。</p>';
+  }).join('') + '<p class="local-note">完成一回並首次答對至少 6 題，即記為通關。進度、星等與錯題保存在這個瀏覽器。</p>';
   progressDialog.showModal();
 }
 
 function openLesson(moveFocus = true) {
-  const id = location.hash.slice(1);
-  const target = lessons.find((item) => item.id === id) || lessons[0];
-  if (target === lesson && moveFocus) {
+  const requested = location.hash.slice(1);
+  const id = requested === 'conditionals' ? 'real-if' : requested;
+  if (id !== requested) history.replaceState(null, '', `#${id}`);
+  const source = studySources.get(id);
+  const knownHub = hubPages.some(([key]) => key === id);
+  const target = source?.grade !== undefined ? source : source || knownHub ? null : lessons[0];
+  const nextRoute = target?.id || id;
+  if (route === nextRoute && moveFocus) {
     jumpTo('main');
     return;
   }
   stopAudio();
-  lesson = target;
+  route = nextRoute;
   mode = 0;
-  resetQuiz();
+  quiz = null;
+  if (target) {
+    lesson = target;
+    startQuiz('lesson', drawUnit(target), target);
+    renderLesson();
+  } else {
+    if (source) startQuiz('exam', drawUnit(source), source);
+    document.title = `${source?.title || hubPages.find(([key]) => key === route)[2]}｜英文文法積木`;
+    renderHub();
+  }
   renderSidebar();
-  renderLesson();
+  renderStudyNavigation();
   if (moveFocus) {
     main.focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 }
 
+function openReview(tasks) {
+  if (!tasks.length) return;
+  startQuiz('review', tasks);
+  renderReview();
+  jumpTo('practice');
+}
+
+function openDaily() {
+  const date = studyDate();
+  const day = settings.daily[date] ||= emptyDay();
+  if (day.plan.length < 3) {
+    const missed = shuffled(pendingMistakes(settings).map(([id]) => id)).slice(0, 3);
+    const gradeBank = byGrade(lesson.grade).flatMap((unit) => unit.pool.map((task) => task.id));
+    day.plan = [...missed, ...shuffled(gradeBank.filter((id) => !missed.includes(id))).slice(0, 3 - missed.length)];
+    saveSettings();
+  }
+  startQuiz('daily', day.plan.map((id) => questionsById.get(id)));
+  renderToday();
+  jumpTo('practice');
+}
+
+function finishQuiz() {
+  const score = quiz.answers.filter(Boolean).length;
+  quiz.finished = true;
+  if (quiz.unit) {
+    const id = quiz.unit.id;
+    settings.best[id] = Math.max(settings.best[id] || 0, score);
+    const day = settings.daily[studyDate()] ||= emptyDay();
+    day.rounds += 1;
+    if (quiz.kind === 'lesson' && studyStars(score) > 0 && !isDone(quiz.unit)) settings.completed.push(id);
+  }
+  if (quiz.kind === 'daily') settings.daily[quiz.day].extra = true;
+  saveSettings();
+  renderStudyNavigation();
+  renderSidebar();
+  if (quiz.kind === 'daily' || quiz.kind === 'review') renderHub();
+}
+
 function handleAction(action) {
   switch (action) {
     case 'progress': showProgress(); break;
+    case 'close-progress': progressDialog.close(); break;
+    case 'pending':
+    case 'archived':
+      showReviewed = action === 'archived';
+      renderReview();
+      $(`[data-action="${action}"]`).focus();
+      break;
+    case 'review-start': openReview(pendingMistakes(settings).slice(0, roundLength).map(([id]) => questionsById.get(id))); break;
+    case 'daily-start': openDaily(); break;
     case 'check-order': {
-      const answer = lesson.tasks[quiz.step].answer;
+      const answer = quiz.tasks[quiz.index].answer;
       checkAnswer(quiz.ordered.length === answer.length && quiz.ordered.every((value, index) => value === index));
       break;
     }
     case 'reset-order': quiz.ordered = []; quiz.status = ''; updateQuiz('[data-add]:enabled'); break;
-    case 'again': resetQuiz(); updateQuiz('#quiz-title'); break;
+    case 'again': startQuiz(quiz.kind, drawUnit(quiz.unit), quiz.unit); updateQuiz('#quiz-title'); jumpTo('practice'); break;
     case 'next': {
-      if (quiz.status !== 'correct') return;
-      if (quiz.step === steps.length - 1) {
-        quiz.finished = true;
-        if (!isDone(lesson)) {
-          settings.completed.push(lesson.id);
-          saveSettings();
-          renderSidebar();
-        }
+      if (quiz.answers.length <= quiz.index || quiz.finished) return;
+      if (quiz.index === quiz.tasks.length - 1) {
+        finishQuiz();
       } else {
-        resetQuiz(quiz.step + 1);
+        quiz.index += 1;
+        resetQuestion();
       }
       updateQuiz('#quiz-title');
       $('#quiz-title').scrollIntoView({ block: 'nearest' });
@@ -425,9 +516,17 @@ document.addEventListener('click', (event) => {
   if (data.jump) { event.preventDefault(); jumpTo(data.jump); return; }
   if (data.grade !== undefined) {
     const grade = Number(data.grade);
-    if (grade !== lesson.grade) location.hash = byGrade(grade)[0].id;
+    if (grade !== lesson.grade || route !== lesson.id) location.hash = byGrade(grade)[0].id;
     return;
   }
+  if (data.term !== undefined || data.publisher !== undefined) {
+    if (data.term !== undefined) syllabusTerm = Number(data.term);
+    else syllabusPublisher = Number(data.publisher);
+    renderSyllabus();
+    $(data.term !== undefined ? `[data-term="${syllabusTerm}"]` : `[data-publisher="${syllabusPublisher}"]`).focus({ preventScroll: true });
+    return;
+  }
+  if (data.reviewId) { openReview([questionsById.get(data.reviewId)]); return; }
   if (data.mode !== undefined) {
     const target = Number(data.mode);
     if (mode === target) return;
@@ -439,7 +538,7 @@ document.addEventListener('click', (event) => {
     return;
   }
   if (data.choice !== undefined) {
-    const task = lesson.tasks[quiz.step];
+    const task = quiz.tasks[quiz.index];
     quiz.selected = Number(data.choice);
     checkAnswer(task.choices[quiz.selected] === task.answer);
     return;

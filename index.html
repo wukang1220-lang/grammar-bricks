@@ -6,10 +6,22 @@
   <meta name="theme-color" content="#f8f7f1">
   <meta name="description" content="和橘橘一起拆解國中英文句型、聽例句、拼積木和練習闖關。">
   <title>英文文法積木</title>
-  <link rel="stylesheet" href="styles.css?v=3">
-  <script defer src="lessons.js?v=3"></script>
+  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="study.css?v=4">
+  <script defer src="lessons.js?v=4"></script>
+  <script defer src="more-lessons.js"></script>
+  <script defer src="semester-lessons.js"></script>
+  <script defer src="bank-core.js"></script>
+  <script defer src="bank-more.js"></script>
+  <script defer src="bank-review.js"></script>
+  <script defer src="traps.js"></script>
+  <script defer src="exam-data.js"></script>
+  <script defer src="curriculum.js"></script>
+  <script defer src="study-data.js"></script>
+  <script defer src="study-ui.js"></script>
   <script defer src="audio.js"></script>
-  <script defer src="app.js?v=3"></script>
+  <script defer src="practice-audio.js"></script>
+  <script defer src="app.js?v=4"></script>
 </head>
 <body>
   <a class="skip" href="#main" data-jump="main">跳到課程內容</a>
@@ -29,6 +41,7 @@
     <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5 15 9l7 .8-5.1 4.8 1.4 6.9-6.3-3.4-6.3 3.4 1.4-6.9L2 9.8 9 9l3-6.5Z"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.2 7m-2.2-7V4m0 7h7"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
   </svg>
   <header class="topbar">
     <div class="top-inner">
@@ -50,6 +63,7 @@
       </div>
     </div>
   </header>
+  <nav id="hub-nav" class="hub-nav" aria-label="學習工具"></nav>
   <div class="layout">
     <aside class="sidebar" aria-label="課程地圖">
       <div class="side-card">
