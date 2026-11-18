@@ -27,7 +27,7 @@ for (const unit of lessons) {
 
 for (const set of examSets) {
   for (const passage of set.passages) {
-    const context = { title: passage.title, text: passage.text };
+    const context = { id: `${set.id}:${passage.id}`, title: passage.title, text: passage.text };
     passage.pool = parseItems(passage.rows, '先回到這段文章，找空格附近的時間、指代或句子結構。').map((task) => ({
       ...task, context, source: set.id, id: `${set.id}:${passage.id}:${task.key}`
     }));

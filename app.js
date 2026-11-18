@@ -209,6 +209,7 @@ function renderLesson() {
         ${modeButtons('formula-display')}
       </div>
       <div class="formula-display" id="formula-display"></div>
+      <p class="sentence-zh" id="formula-zh"></p>
       <div class="coach"><span class="cat-face" aria-hidden="true"></span><p><b>橘橘提示</b>${esc(lesson.tip)}</p></div>
     </section>
     <section class="panel" id="traps" tabindex="-1">
@@ -229,7 +230,7 @@ function renderTraps() {
   list.innerHTML = lesson.traps[mode].map(({ wrong, right, note }) => `<article class="trap">
     <div class="trap-pair">
       <div class="trap-line wrong"><div><small>✕ 錯誤</small><span class="example" lang="en">${esc(wrong)}</span></div>${speakButton(wrong, '聽錯誤例句')}</div>
-      <div class="trap-line"><div><small>✓ 正確</small><span class="example" lang="en">${esc(right)}</span></div>${speakButton(right, '聽正確例句')}</div>
+      <div class="trap-line"><div><small>✓ 正確</small><span class="example" lang="en">${esc(right)}</span><span class="sentence-zh">${esc(lessonZh[lesson.id].corrections[right])}</span></div>${speakButton(right, '聽正確例句')}</div>
     </div><p>${esc(note)}</p>
   </article>`).join('');
 }
@@ -244,6 +245,7 @@ function renderFormula(animate) {
   const pastPositions = new Map([...display.querySelectorAll('[data-block]')].map((block) => [block.dataset.block, block.getBoundingClientRect()]));
   const { label, punctuation, blocks } = lesson.shapes[mode];
   const sentence = blocks.map((block) => block.text).join(' ') + punctuation;
+  $('#formula-zh').textContent = lessonZh[lesson.id].formulas[sentence];
   display.innerHTML = `<div class="bricks" role="group" aria-label="${esc(label)}句型積木">
     ${blocks.map((block) => {
       const description = esc(`聽積木：${block.text}，${block.role}`);
@@ -271,7 +273,7 @@ function scramble(length) {
 
 function startQuiz(kind, tasks, unit = null) {
   const prepared = tasks.map((task) => task.type === 'pick' ? { ...task, choices: shuffled(task.choices) } : task);
-  quiz = { kind, unit, day: studyDate(), tasks: prepared, answers: [], index: 0, initialStars: sumStars(settings), finished: false };
+  quiz = { kind, unit, day: studyDate(), tasks: prepared, answers: [], index: 0, initialStars: sumStars(settings), finished: false, showZh: false };
   resetQuestion();
 }
 
@@ -315,9 +317,22 @@ function celebrate(completed = false) {
 
 const stillFlowers = '<span class="still-flowers" aria-hidden="true">🌸 🌼 🌸 🌼 🌸</span>';
 
+function translationButton(open) {
+  return open ? '收起中文翻譯' : '看中文翻譯';
+}
+
+function toggleQuizTranslation() {
+  quiz.showZh = !quiz.showZh;
+  $('#quiz').classList.toggle('show-quiz-zh', quiz.showZh);
+  const button = $('#quiz [data-action="toggle-zh"]');
+  button.setAttribute('aria-expanded', String(quiz.showZh));
+  button.textContent = translationButton(quiz.showZh);
+}
+
 function renderQuiz() {
   const container = $('#quiz');
-  const { index, tasks, selected, ordered, pieces, status, finished, kind, unit } = quiz;
+  const { index, tasks, selected, ordered, pieces, status, finished, kind, unit, showZh } = quiz;
+  container.classList.toggle('show-quiz-zh', showZh);
   if (finished) {
     const score = quiz.answers.filter(Boolean).length;
     const ranked = kind === 'lesson' || kind === 'exam';
@@ -339,23 +354,28 @@ function renderQuiz() {
     return;
   }
   const task = tasks[index];
+  const [promptZh, choicesZh] = quizZh[task.id];
+  const showPromptZh = promptZh !== task.prompt;
+  const hasTranslations = showPromptZh || task.type === 'pick' || Boolean(task.context);
   const done = status === 'correct';
   const label = task.type === 'build' ? '點選積木來拼句，點上方積木可撤回。' : '點選答案，看看橘橘怎麼解釋。';
   const choices = task.type === 'pick' && task.choices.map((choice, index) => {
     const active = selected === index;
-    return `<div class="choice"><button type="button" data-choice="${index}" class="${active ? (done ? 'right' : 'incorrect') : ''}" ${done ? 'disabled' : ''} aria-pressed="${active}" ${active && !done ? 'aria-describedby="feedback"' : ''}><span lang="en">${esc(choice)}</span>${active ? (done ? ' ✓' : ' ✕') : ''}</button>${speakButton(choice, '聽選項')}</div>`;
+    return `<div class="choice"><button type="button" data-choice="${index}" class="${active ? (done ? 'right' : 'incorrect') : ''}" ${done ? 'disabled' : ''} aria-pressed="${active}" ${active && !done ? 'aria-describedby="feedback"' : ''}><span lang="en">${esc(choice)}</span>${active ? (done ? ' ✓' : ' ✕') : ''}<span class="quiz-zh choice-zh">${esc(choicesZh[choice])}</span></button>${speakButton(choice, '聽選項')}</div>`;
   }).join('');
   const tiles = task.type === 'build' && pieces.map((index) => {
     const word = esc(task.answer[index]);
     return `<span class="tile-wrap"><button type="button" class="tile" data-add="${index}" ${ordered.includes(index) || done ? 'disabled' : ''}><span lang="en">${word}</span></button>${speakButton(task.answer[index], '聽積木')}</span>`;
   }).join('');
-  const context = task.context ? `<details class="reading-context" open><summary>${esc(task.context.title)}</summary><div class="utterance"><p lang="en">${esc(task.context.text)}</p>${speakButton(task.context.text, '聽閱讀素材')}</div></details>` : '';
+  const context = task.context ? `<details class="reading-context" open><summary>${esc(task.context.title)}</summary><div class="utterance"><p lang="en">${esc(task.context.text)}</p>${speakButton(task.context.text, '聽閱讀素材')}</div><p class="quiz-zh passage-translation">${esc(passageZh[task.context.id])}</p></details>` : '';
   const answer = task.type === 'build' ? task.answer.join(' ') : task.answer;
   container.innerHTML = `
     <div class="round-progress"><strong>第 ${index + 1} / ${tasks.length} 題</strong><progress aria-label="作答進度" max="${tasks.length}" value="${quiz.answers.length}"></progress>${unit && settings.best[unit.id] !== undefined ? `<span>最佳 ${starsMarkup(studyStars(settings.best[unit.id]))}</span>` : ''}</div>
     ${kind === 'review' || kind === 'daily' ? `<p class="question-source">${esc(studySources.get(task.source).title)}</p>` : ''}
+    ${hasTranslations ? `<button type="button" class="button secondary translation-toggle" data-action="toggle-zh" aria-expanded="${showZh}">${translationButton(showZh)}</button>` : ''}
     ${context}
     <div class="quiz-text"><h3 id="quiz-title" tabindex="-1">${quizPrompt(task.prompt)}</h3>${speakButton(task.prompt, '聽題目英文')}</div>
+    ${showPromptZh ? `<p class="quiz-zh question-translation">${esc(promptZh)}</p>` : ''}
     <p class="translation" style="margin-bottom: .55rem">${label}</p>
     ${choices ? `<div class="choices">${choices}</div>` : `
     <div class="answer-line" role="group" aria-label="你的拼句">
@@ -484,6 +504,7 @@ function finishQuiz() {
 
 function handleAction(action) {
   switch (action) {
+    case 'toggle-zh': toggleQuizTranslation(); break;
     case 'progress': showProgress(); break;
     case 'close-progress': progressDialog.close(); break;
     case 'pending':
