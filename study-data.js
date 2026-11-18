@@ -17,9 +17,12 @@ for (const unit of lessons) {
     ...unit.tasks.map((task, index) => ({ ...task, key: `base-${index + 1}` })),
     ...parseItems(bankText[unit.id], unit.tip)
   ].map((task) => ({ ...task, source: unit.id, id: `${unit.id}:${task.key}` }));
-  unit.traps = trapText[unit.id].trim().split('\n').map((line, index) => ({
-    ...trap(...line.split('|')), form: trapForms[index]
-  }));
+  const trapsByLabel = new Map(unit.shapes.map(({ label }) => [label, []]));
+  for (const line of trapText[unit.id].trim().split('\n')) {
+    const [label, wrong, right, note] = line.split('|');
+    trapsByLabel.get(label).push(trap(wrong, right, note));
+  }
+  unit.traps = unit.shapes.map(({ label }) => trapsByLabel.get(label));
 }
 
 for (const set of examSets) {

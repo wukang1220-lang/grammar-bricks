@@ -19,7 +19,6 @@
 .sheet-stories { background-image: url("assets/juju-stories.jpg"); }
 .sheet-bridge { background-image: url("assets/juju-bridge.jpg"); }
 .sheet-review { background-image: url("assets/juju-review.jpg"); }
-.trap-form { font-size: .92rem; margin-bottom: .42rem; }
 .round-progress { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: .82rem; color: var(--green-dark); font-size: .82rem; }
 .round-progress progress { flex: 1 1 6rem; width: auto; min-width: 3rem; }
 .star-rating { color: #8b5005; letter-spacing: .085em; white-space: nowrap; font-weight: 850; }

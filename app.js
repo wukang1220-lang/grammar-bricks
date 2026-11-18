@@ -170,6 +170,10 @@ function sectionHeading(title, symbol, theme = '', tag = '') {
   return `<div class="section-head"><span class="section-icon ${theme}">${icon(symbol)}</span><h2>${title}</h2>${tag ? `<span class="section-tag">${tag}</span>` : ''}</div>`;
 }
 
+function modeButtons(target) {
+  return lesson.shapes.map(({ label }, index) => `<button type="button" data-mode="${index}" aria-pressed="${index === mode}" aria-controls="${target}">${esc(label)}</button>`).join('');
+}
+
 function renderLesson() {
   const position = currentIndex(lesson);
   const title = esc(lesson.title);
@@ -202,27 +206,32 @@ function renderLesson() {
       ${sectionHeading('句型公式積木', 'brick', 'blue')}
       <p>${esc(lesson.rule)}</p>
       <div id="modes" class="modes" role="group" aria-label="切換句型">
-        ${lesson.shapes.map((form, index) => `<button type="button" data-mode="${index}" aria-pressed="${index === 0}">${esc(form.label)}</button>`).join('')}
+        ${modeButtons('formula-display')}
       </div>
       <div class="formula-display" id="formula-display"></div>
       <div class="coach"><span class="cat-face" aria-hidden="true"></span><p><b>橘橘提示</b>${esc(lesson.tip)}</p></div>
     </section>
     <section class="panel" id="traps" tabindex="-1">
       ${sectionHeading('易錯地雷區', 'warning', 'amber')}
-      <div class="trap-list">
-        ${lesson.traps.map(({ form, wrong, right, note }) => `<article class="trap">
-          <h3 class="trap-form">${form}</h3>
-          <div class="trap-pair">
-            <div class="trap-line wrong"><div><small>✕ 錯誤</small><span class="example" lang="en">${esc(wrong)}</span></div>${speakButton(wrong, '聽錯誤例句')}</div>
-            <div class="trap-line"><div><small>✓ 正確</small><span class="example" lang="en">${esc(right)}</span></div>${speakButton(right, '聽正確例句')}</div>
-          </div><p>${esc(note)}</p>
-        </article>`).join('')}
-      </div>
+      <div class="modes" role="group" aria-label="切換易錯句型">${modeButtons('trap-list')}</div>
+      <div class="trap-list" id="trap-list" role="region"></div>
     </section>
     ${practicePanel('闖關練習', `題庫 ${lesson.pool.length} 題 · 每回 10 題`)}
     <footer class="footer"><span>英文文法積木</span><span>依文法主題編排 · 各版本授課順序可能不同</span></footer>`;
   renderFormula(false);
+  renderTraps();
   renderQuiz();
+}
+
+function renderTraps() {
+  const list = $('#trap-list');
+  list.setAttribute('aria-label', `${lesson.shapes[mode].label}的易錯例句`);
+  list.innerHTML = lesson.traps[mode].map(({ wrong, right, note }) => `<article class="trap">
+    <div class="trap-pair">
+      <div class="trap-line wrong"><div><small>✕ 錯誤</small><span class="example" lang="en">${esc(wrong)}</span></div>${speakButton(wrong, '聽錯誤例句')}</div>
+      <div class="trap-line"><div><small>✓ 正確</small><span class="example" lang="en">${esc(right)}</span></div>${speakButton(right, '聽正確例句')}</div>
+    </div><p>${esc(note)}</p>
+  </article>`).join('');
 }
 
 function blockColor(role) {
@@ -531,10 +540,12 @@ document.addEventListener('click', (event) => {
     const target = Number(data.mode);
     if (mode === target) return;
     stopAudio();
-    $('#modes [aria-pressed="true"]').setAttribute('aria-pressed', 'false');
-    control.setAttribute('aria-pressed', 'true');
     mode = target;
+    for (const button of main.querySelectorAll('[data-mode]')) {
+      button.setAttribute('aria-pressed', String(Number(button.dataset.mode) === mode));
+    }
     renderFormula(true);
+    renderTraps();
     return;
   }
   if (data.choice !== undefined) {
